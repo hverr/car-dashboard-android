@@ -9,6 +9,17 @@ import android.webkit.*;
 public class DashboardFragment extends Fragment {
     private WebView webView;
 
+    public DashboardFragment() {
+        // Obligatory empty constructor
+    }
+
+    public static DashboardFragment newInstance() {
+        Bundle args = new Bundle();
+        DashboardFragment fragment = new DashboardFragment();
+        fragment.setArguments(args);
+        return fragment;
+    }
+
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
