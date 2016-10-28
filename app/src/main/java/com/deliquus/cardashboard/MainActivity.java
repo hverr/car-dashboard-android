@@ -107,6 +107,15 @@ public class MainActivity extends AppCompatActivity {
     }
 
     @Override
+    public boolean onPrepareOptionsMenu(Menu menu) {
+        boolean drawerOpen = drawerLayout.isDrawerVisible(drawerListView);
+        for(int i = 0; i < menu.size(); i++) {
+            menu.getItem(i).setVisible(!drawerOpen);
+        }
+        return super.onPrepareOptionsMenu(menu);
+    }
+
+    @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         if(actionBarDrawerToggle.onOptionsItemSelected(item)) {
             return true;
