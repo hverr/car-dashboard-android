@@ -106,8 +106,10 @@ public class MainActivity extends AppCompatActivity {
         android.util.Log.d(TAG, "selectItem(" + index + ")");
         if(index == 0) {
             loadDashboard();
+            drawerLayout.closeDrawers();
         } else {
             loadSettings();
+            drawerLayout.closeDrawers();
         }
     }
 
