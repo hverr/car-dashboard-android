@@ -119,6 +119,9 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void loadSettings() {
-        android.util.Log.d(TAG, "loadSettings()");
+        SettingsFragment fragment = new SettingsFragment();
+        FragmentManager manager = getFragmentManager();
+        manager.beginTransaction().replace(R.id.content_layout, fragment).commit();
+        setTitle("Settings");
     }
 }
