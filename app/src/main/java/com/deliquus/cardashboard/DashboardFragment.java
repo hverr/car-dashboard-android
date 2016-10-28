@@ -10,6 +10,7 @@ import android.webkit.*;
 
 
 public class DashboardFragment extends Fragment {
+    static public final String TAG = "DashboardFragment";
     private WebView webView;
 
     private SharedPreferences.OnSharedPreferenceChangeListener preferenceListener;
@@ -33,7 +34,9 @@ public class DashboardFragment extends Fragment {
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
-        return inflater.inflate(R.layout.fragment_dashboard, container, false);
+        View view = inflater.inflate(R.layout.fragment_dashboard, container, false);
+        setHasOptionsMenu(true);
+        return view;
     }
 
     @Override
@@ -67,6 +70,23 @@ public class DashboardFragment extends Fragment {
         super.onStop();
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(getActivity());
         prefs.unregisterOnSharedPreferenceChangeListener(preferenceListener);
+    }
+
+    @Override
+    public void onCreateOptionsMenu(Menu menu, MenuInflater inflater) {
+        inflater.inflate(R.menu.dashboard_fragment_menu, menu);
+        super.onCreateOptionsMenu(menu, inflater);
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        switch(item.getItemId()) {
+            case R.id.refresh:
+                webView.reload();
+                return true;
+            default:
+                return super.onOptionsItemSelected(item);
+        }
     }
 
     private void updateRPiAddress(SharedPreferences prefs) {
