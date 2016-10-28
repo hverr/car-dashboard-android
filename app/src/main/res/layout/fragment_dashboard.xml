@@ -4,7 +4,6 @@
     android:layout_height="match_parent"
     tools:context="com.deliquus.cardashboard.DashboardFragment">
 
-    <!-- TODO: Update blank fragment layout -->
     <WebView
         android:id="@+id/web_view"
         android:layout_width="fill_parent"
