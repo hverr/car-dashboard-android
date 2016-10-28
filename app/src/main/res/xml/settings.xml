@@ -11,6 +11,11 @@
             android:key="rpi_address_preference"
             android:title="RPi Address"
             android:defaultValue="192.168.43.65" />
+
+        <EditTextPreference
+            android:key="rpi_port_preference"
+            android:title="RPi Port"
+            android:defaultValue="8080" />
     </PreferenceCategory>
 
 </PreferenceScreen>

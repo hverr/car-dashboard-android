@@ -20,14 +20,17 @@ public class SettingsFragment extends PreferenceFragment {
         preferenceListener = new SharedPreferences.OnSharedPreferenceChangeListener() {
             @Override
             public void onSharedPreferenceChanged(SharedPreferences prefs, String s) {
-                if (s.equals(PreferenceKeys.RPI_ADDRESS_PREF)) {
+                if(s.equals(PreferenceKeys.RPI_ADDRESS_PREF)) {
                     updateRPiAddress(prefs);
+                } else if(s.equals(PreferenceKeys.RPI_PORT_PREF)) {
+                    updateRPiPort(prefs);
                 }
             }
         };
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(getActivity());
         prefs.registerOnSharedPreferenceChangeListener(preferenceListener);
         updateRPiAddress(prefs);
+        updateRPiPort(prefs);
     }
 
     @Override
@@ -40,5 +43,10 @@ public class SettingsFragment extends PreferenceFragment {
     private void updateRPiAddress(SharedPreferences prefs) {
         Preference pref = findPreference(PreferenceKeys.RPI_ADDRESS_PREF);
         pref.setSummary(prefs.getString(PreferenceKeys.RPI_ADDRESS_PREF, null));
+    }
+
+    private void updateRPiPort(SharedPreferences prefs) {
+        Preference pref = findPreference(PreferenceKeys.RPI_PORT_PREF);
+        pref.setSummary(prefs.getString(PreferenceKeys.RPI_PORT_PREF, null));
     }
 }

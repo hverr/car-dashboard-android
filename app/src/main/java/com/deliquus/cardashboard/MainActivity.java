@@ -77,14 +77,11 @@ public class MainActivity extends AppCompatActivity {
         // Load preferences
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
         setKeepScreenOn(prefs.getBoolean(PreferenceKeys.SCREEN_ON_PREF, true));
-        setRPiAddress(prefs.getString(PreferenceKeys.RPI_ADDRESS_PREF, null));
         preferenceListener = new SharedPreferences.OnSharedPreferenceChangeListener() {
             @Override
             public void onSharedPreferenceChanged(SharedPreferences prefs, String s) {
                 if(s.equals(PreferenceKeys.SCREEN_ON_PREF)) {
                     setKeepScreenOn(prefs.getBoolean(PreferenceKeys.SCREEN_ON_PREF, true));
-                } else {
-                    setRPiAddress(prefs.getString(PreferenceKeys.RPI_ADDRESS_PREF, null));
                 }
             }
         };
@@ -161,9 +158,5 @@ public class MainActivity extends AppCompatActivity {
         } else {
             getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         }
-    }
-
-    private void setRPiAddress(String address) {
-        android.util.Log.d(TAG, "setRPiAddress(" + address + ")");
     }
 }

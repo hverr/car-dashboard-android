@@ -1,13 +1,18 @@
 package com.deliquus.cardashboard;
 
 import android.app.*;
+import android.content.*;
 import android.os.*;
+import android.preference.Preference;
+import android.preference.PreferenceManager;
 import android.view.*;
 import android.webkit.*;
 
 
 public class DashboardFragment extends Fragment {
     private WebView webView;
+
+    private SharedPreferences.OnSharedPreferenceChangeListener preferenceListener;
 
     public DashboardFragment() {
         // Obligatory empty constructor
@@ -43,6 +48,30 @@ public class DashboardFragment extends Fragment {
                 return true;
             }
         });
-        webView.loadUrl("https://google.com");
+
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(getActivity());
+        updateRPiAddress(prefs);
+        preferenceListener = new SharedPreferences.OnSharedPreferenceChangeListener() {
+            @Override
+            public void onSharedPreferenceChanged(SharedPreferences prefs, String s) {
+                if (s.equals(PreferenceKeys.RPI_ADDRESS_PREF) || s.equals(PreferenceKeys.RPI_PORT_PREF)) {
+                    updateRPiAddress(prefs);
+                }
+            }
+        };
+        prefs.registerOnSharedPreferenceChangeListener(preferenceListener);
+    }
+
+    @Override
+    public void onStop() {
+        super.onStop();
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(getActivity());
+        prefs.unregisterOnSharedPreferenceChangeListener(preferenceListener);
+    }
+
+    private void updateRPiAddress(SharedPreferences prefs) {
+        String address = prefs.getString(PreferenceKeys.RPI_ADDRESS_PREF, null);
+        String port = prefs.getString(PreferenceKeys.RPI_PORT_PREF, null);
+        webView.loadUrl("http://" + address + ":" + port);
     }
 }
