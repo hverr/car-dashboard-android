@@ -2,9 +2,15 @@
 
     <PreferenceCategory android:title="Preferences">
         <CheckBoxPreference
-            android:key="check_box_preference"
-            android:title="Check Box"
-            android:summary="Check this box!" />
+            android:key="screen_on_preference"
+            android:title="Keep Screen On"
+            android:summary="Prevent the screen from going to sleep"
+            android:defaultValue="true" />
+
+        <EditTextPreference
+            android:key="rpi_address_preference"
+            android:title="RPi Address"
+            android:defaultValue="192.168.43.65" />
     </PreferenceCategory>
 
 </PreferenceScreen>

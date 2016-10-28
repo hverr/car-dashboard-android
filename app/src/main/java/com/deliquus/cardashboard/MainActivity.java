@@ -1,8 +1,10 @@
 package com.deliquus.cardashboard;
 
 import android.app.*;
+import android.content.*;
 import android.content.res.*;
 import android.os.*;
+import android.preference.*;
 import android.support.v4.view.*;
 import android.support.v4.widget.*;
 import android.support.v7.app.*;
@@ -12,6 +14,7 @@ import android.widget.*;
 public class MainActivity extends AppCompatActivity {
     static public final String TAG = "MainActivity";
 
+
     static private final String[] TILES = new String[] {
             "Dashboard",
             "Settings"
@@ -20,6 +23,7 @@ public class MainActivity extends AppCompatActivity {
     private ListView drawerListView;
 
     private ActionBarDrawerToggle actionBarDrawerToggle;
+    private SharedPreferences.OnSharedPreferenceChangeListener preferenceListener;
 
     private CharSequence drawerTitle;
     private CharSequence fragmentTitle;
@@ -70,10 +74,33 @@ public class MainActivity extends AppCompatActivity {
         };
         drawerLayout.addDrawerListener(actionBarDrawerToggle);
 
+        // Load preferences
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
+        setKeepScreenOn(prefs.getBoolean(PreferenceKeys.SCREEN_ON_PREF, true));
+        setRPiAddress(prefs.getString(PreferenceKeys.RPI_ADDRESS_PREF, null));
+        preferenceListener = new SharedPreferences.OnSharedPreferenceChangeListener() {
+            @Override
+            public void onSharedPreferenceChanged(SharedPreferences prefs, String s) {
+                if(s.equals(PreferenceKeys.SCREEN_ON_PREF)) {
+                    setKeepScreenOn(prefs.getBoolean(PreferenceKeys.SCREEN_ON_PREF, true));
+                } else {
+                    setRPiAddress(prefs.getString(PreferenceKeys.RPI_ADDRESS_PREF, null));
+                }
+            }
+        };
+        prefs.registerOnSharedPreferenceChangeListener(preferenceListener);
+
         // Restore
         if(savedInstanceState == null) {
             selectItem(0);
         }
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
+        prefs.unregisterOnSharedPreferenceChangeListener(preferenceListener);
     }
 
     @Override
@@ -125,5 +152,18 @@ public class MainActivity extends AppCompatActivity {
         FragmentManager manager = getFragmentManager();
         manager.beginTransaction().replace(R.id.content_layout, fragment).commit();
         setTitle("Settings");
+    }
+
+    private void setKeepScreenOn(boolean flag) {
+        android.util.Log.d(TAG, "setKeepScreenOn(" + flag + ")");
+        if(flag) {
+            getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        } else {
+            getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        }
+    }
+
+    private void setRPiAddress(String address) {
+        android.util.Log.d(TAG, "setRPiAddress(" + address + ")");
     }
 }
