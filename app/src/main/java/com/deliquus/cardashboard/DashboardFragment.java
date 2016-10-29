@@ -3,15 +3,20 @@ package com.deliquus.cardashboard;
 import android.app.*;
 import android.content.*;
 import android.os.*;
-import android.preference.Preference;
-import android.preference.PreferenceManager;
+import android.preference.*;
 import android.view.*;
 import android.webkit.*;
+
+import java.util.*;
 
 
 public class DashboardFragment extends Fragment {
     static public final String TAG = "DashboardFragment";
+
     private WebView webView;
+
+    private Handler refreshHandler;
+    private Timer refreshTimer;
 
     private SharedPreferences.OnSharedPreferenceChangeListener preferenceListener;
 
@@ -40,6 +45,13 @@ public class DashboardFragment extends Fragment {
     }
 
     @Override
+    public void onDestroyView() {
+        webView.loadUrl("about:blank");
+        webView = null;
+        super.onDestroyView();
+    }
+
+    @Override
     public void onStart() {
         super.onStart();
         webView = (WebView)getView().findViewById(R.id.web_view);
@@ -51,6 +63,23 @@ public class DashboardFragment extends Fragment {
                 return true;
             }
         });
+
+        refreshHandler = new Handler(new Handler.Callback() {
+            @Override
+            public boolean handleMessage(Message message) {
+                if(refreshTimer != null && webView != null) {
+                    webView.destroyDrawingCache();
+                }
+                return true;
+            }
+        });
+        refreshTimer = new Timer();
+        refreshTimer.scheduleAtFixedRate(new TimerTask() {
+            @Override
+            public void run() {
+                refreshHandler.obtainMessage().sendToTarget();
+            }
+        }, 0, 5000);
 
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(getActivity());
         updateRPiAddress(prefs);
@@ -70,6 +99,12 @@ public class DashboardFragment extends Fragment {
         super.onStop();
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(getActivity());
         prefs.unregisterOnSharedPreferenceChangeListener(preferenceListener);
+
+        refreshTimer.cancel();
+        refreshTimer = null;
+
+        webView.loadUrl("about:blank");
+        webView.destroyDrawingCache();
     }
 
     @Override
