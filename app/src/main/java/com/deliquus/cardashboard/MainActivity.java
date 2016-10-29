@@ -94,8 +94,19 @@ public class MainActivity extends AppCompatActivity {
     }
 
     @Override
+    protected void onStart() {
+        super.onStart();
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
+        if(prefs.getBoolean(PreferenceKeys.AUTO_MUSIC_STREAMING_PREF, false)) {
+            android.util.Log.i(TAG, "onStart(): Automatically starting music streaming");
+            startMusicTrackerService();
+        }
+    }
+
+    @Override
     protected void onDestroy() {
         super.onDestroy();
+        android.util.Log.d(TAG, "onDestroy()");
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
         prefs.unregisterOnSharedPreferenceChangeListener(preferenceListener);
     }
@@ -167,5 +178,13 @@ public class MainActivity extends AppCompatActivity {
         } else {
             getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         }
+    }
+
+    private void startMusicTrackerService() {
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
+        Intent intent = new Intent(this, MusicTrackerService.class);
+        intent.putExtra(MusicTrackerService.RPI_ADDRESS_KEY, prefs.getString(PreferenceKeys.RPI_ADDRESS_PREF, null));
+        intent.putExtra(MusicTrackerService.RPI_PORT_KEY, prefs.getString(PreferenceKeys.RPI_PORT_PREF, null));
+        startService(intent);
     }
 }

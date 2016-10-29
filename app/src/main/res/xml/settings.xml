@@ -18,4 +18,17 @@
             android:defaultValue="8080" />
     </PreferenceCategory>
 
+    <PreferenceCategory android:title="Music">
+        <CheckBoxPreference
+            android:key="auto_music_streaming"
+            android:title="Start Streaming on Launch"
+            android:summary="Start streaming music when the application starts"
+            android:defaultValue="false" />
+
+        <SwitchPreference
+            android:key="music_streaming"
+            android:title="Stream Music"
+            android:defaultValue="false" />
+    </PreferenceCategory>
+
 </PreferenceScreen>

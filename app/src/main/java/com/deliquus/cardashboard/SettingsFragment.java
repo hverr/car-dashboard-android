@@ -3,7 +3,6 @@ package com.deliquus.cardashboard;
 import android.content.*;
 import android.os.*;
 import android.preference.*;
-import android.view.*;
 
 public class SettingsFragment extends PreferenceFragment {
     private SharedPreferences.OnSharedPreferenceChangeListener preferenceListener;
@@ -31,6 +30,16 @@ public class SettingsFragment extends PreferenceFragment {
         prefs.registerOnSharedPreferenceChangeListener(preferenceListener);
         updateRPiAddress(prefs);
         updateRPiPort(prefs);
+        updateMusicStreaming();
+
+        findPreference(PreferenceKeys.MUSIC_STREAMING_PREF).setOnPreferenceChangeListener(new Preference.OnPreferenceChangeListener() {
+            @Override
+            public boolean onPreferenceChange(Preference preference, Object o) {
+                SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(getActivity());
+                setMusicStreaming(prefs, (Boolean)o);
+                return true;
+            }
+        });
     }
 
     @Override
@@ -48,5 +57,22 @@ public class SettingsFragment extends PreferenceFragment {
     private void updateRPiPort(SharedPreferences prefs) {
         Preference pref = findPreference(PreferenceKeys.RPI_PORT_PREF);
         pref.setSummary(prefs.getString(PreferenceKeys.RPI_PORT_PREF, null));
+    }
+
+    private void updateMusicStreaming() {
+        SwitchPreference pref = (SwitchPreference)findPreference(PreferenceKeys.MUSIC_STREAMING_PREF);
+        pref.setChecked(MusicTrackerService.isRunning(getActivity()));
+    }
+
+    private void setMusicStreaming(SharedPreferences prefs, boolean newValue) {
+        if(newValue) {
+            Intent intent = new Intent(getActivity(), MusicTrackerService.class);
+            intent.putExtra(MusicTrackerService.RPI_ADDRESS_KEY, prefs.getString(PreferenceKeys.RPI_ADDRESS_PREF, null));
+            intent.putExtra(MusicTrackerService.RPI_PORT_KEY, prefs.getString(PreferenceKeys.RPI_PORT_PREF, null));
+            getActivity().startService(intent);
+        } else {
+            Intent intent = new Intent(getActivity(), MusicTrackerService.class);
+            getActivity().stopService(intent);
+        }
     }
 }
