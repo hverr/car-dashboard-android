@@ -1,21 +1,27 @@
 package com.deliquus.cardashboard;
 
+import android.*;
 import android.app.*;
 import android.content.*;
+import android.content.pm.*;
+import android.database.*;
 import android.graphics.*;
 import android.net.*;
 import android.os.*;
+import android.provider.*;
+import android.support.v4.app.*;
+import android.support.v4.content.*;
 
 public class MusicTrackerService extends Service {
     static private final String TAG = "MusicTrackerService";
     static private final int NOTIFICATION_ID = 1;
+    static public final int PERMISSIONS_REQUEST_CODE = 1;
 
     static public final String RPI_ADDRESS_KEY = "rpi_address_key";
     static public final String RPI_PORT_KEY = "rpi_address_port";
 
     static private final String MUSIC_PLAYSTATE_CHANGED = "com.android.music.playstatechanged";
     static private final String MUSIC_META_CHANGED = "com.android.music.metachanged";
-    static private final String MUSIC_QUEUE_CHANGED = "com.android.music.queuechanged";
 
     private BroadcastReceiver broadcastReceiver;
     private MusicTrackerThread musicTrackerThread;
@@ -24,21 +30,60 @@ public class MusicTrackerService extends Service {
 
     }
 
+    static public void start(Activity activity, SharedPreferences prefs) {
+        int v = ContextCompat.checkSelfPermission(activity, Manifest.permission.READ_EXTERNAL_STORAGE);
+        if(v != PackageManager.PERMISSION_GRANTED) {
+            android.util.Log.w(TAG, "No permission to query media files, asking the user");
+            ActivityCompat.requestPermissions(activity, new String[] { Manifest.permission.READ_EXTERNAL_STORAGE }, PERMISSIONS_REQUEST_CODE);
+            return;
+        }
+
+        Intent intent = new Intent(activity, MusicTrackerService.class);
+        intent.putExtra(MusicTrackerService.RPI_ADDRESS_KEY, prefs.getString(PreferenceKeys.RPI_ADDRESS_PREF, null));
+        intent.putExtra(MusicTrackerService.RPI_PORT_KEY, prefs.getString(PreferenceKeys.RPI_PORT_PREF, null));
+        activity.startService(intent);
+    }
+
+    static public void onRequestPermissionsResult(Activity activity, SharedPreferences prefs, String[] permissions, int[] grantResults) {
+        if(grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+            start(activity, prefs);
+        } else {
+            android.util.Log.e(TAG, "Not starting music tracker, permission denied");
+        }
+    }
+
+    static public void stop(Activity activity) {
+        Intent intent = new Intent(activity, MusicTrackerService.class);
+        activity.stopService(intent);
+    }
+
     @Override
     public void onCreate() {
         IntentFilter filter = new IntentFilter();
         filter.addAction(MUSIC_META_CHANGED);
         filter.addAction(MUSIC_PLAYSTATE_CHANGED);
-        filter.addAction(MUSIC_QUEUE_CHANGED);
 
         broadcastReceiver = new BroadcastReceiver() {
             @Override
             public void onReceive(Context context, Intent intent) {
                 Uri uri = intent.getData();
-                android.util.Log.d(TAG, "onReceive(): " + uri);
-                android.util.Log.d(TAG, "onReceive(): Track: " + intent.getStringExtra("track"));
-                android.util.Log.d(TAG, "onReceive(): Artist: " + intent.getStringExtra("artist"));
-                android.util.Log.d(TAG, "onReceive(): Album: " + intent.getStringExtra("album"));
+                android.util.Log.d(TAG, "onReceive(): " + intent.getExtras());
+                for(String key : intent.getExtras().keySet()) {
+                    android.util.Log.d(TAG, "onReceive(): " + key + "=" + intent.getExtras().get(key));
+                }
+
+                if (!intent.hasExtra("id") || !intent.hasExtra("playing")) {
+                    android.util.Log.e(TAG, "onReceive(): Not enough data to stream track");
+                } else if (!intent.hasExtra("position")) {
+                    android.util.Log.w(TAG, "onReceive(): Track position not available, streaming from beginning");
+                }
+
+                int id = intent.getIntExtra("id", -1);
+                long position = intent.getLongExtra("position", 0);
+                boolean playing = intent.getBooleanExtra("playing", false);
+
+                String filePath = queryMediaPath(id);
+                android.util.Log.d(TAG, "Song " + id + " (file=" + filePath + ", playing=" + playing + ", pos=" + position + ")");
             }
         };
         registerReceiver(broadcastReceiver, filter);
@@ -132,5 +177,29 @@ public class MusicTrackerService extends Service {
     static private class MusicTrackerEvent {
         public Uri uri;
         public Object shouldStop;
+    }
+
+    private String queryMediaPath(int id) {
+        Uri media = MediaStore.Audio.Media.EXTERNAL_CONTENT_URI;
+        String selection = MediaStore.Audio.Media._ID + "=?";
+        String[] selectionArgs = { Integer.toString(id) };
+        String[] projection = { MediaStore.Audio.Media.DATA };
+
+        Cursor c = getContentResolver().query(media, projection, selection, selectionArgs, null);
+        if(c != null) {
+            while (c.moveToNext()) {
+                int index = c.getColumnIndex(MediaStore.Audio.Media.DATA);
+                if (index == -1) {
+                    android.util.Log.e(TAG, "No data column for song with id " + id);
+                } else {
+                    String s = c.getString(index);
+                    c.close();
+                    return s;
+                }
+            }
+            c.close();
+        }
+        android.util.Log.e(TAG, "No song found with id " + id);
+        return null;
     }
 }

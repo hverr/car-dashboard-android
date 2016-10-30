@@ -66,13 +66,9 @@ public class SettingsFragment extends PreferenceFragment {
 
     private void setMusicStreaming(SharedPreferences prefs, boolean newValue) {
         if(newValue) {
-            Intent intent = new Intent(getActivity(), MusicTrackerService.class);
-            intent.putExtra(MusicTrackerService.RPI_ADDRESS_KEY, prefs.getString(PreferenceKeys.RPI_ADDRESS_PREF, null));
-            intent.putExtra(MusicTrackerService.RPI_PORT_KEY, prefs.getString(PreferenceKeys.RPI_PORT_PREF, null));
-            getActivity().startService(intent);
+            MusicTrackerService.start(getActivity(), prefs);
         } else {
-            Intent intent = new Intent(getActivity(), MusicTrackerService.class);
-            getActivity().stopService(intent);
+            MusicTrackerService.stop(getActivity());
         }
     }
 }
