@@ -12,6 +12,8 @@ import android.provider.*;
 import android.support.v4.app.*;
 import android.support.v4.content.*;
 
+import java.util.concurrent.*;
+
 public class MusicTrackerService extends Service {
     static private final String TAG = "MusicTrackerService";
     static private final int NOTIFICATION_ID = 1;
@@ -25,6 +27,7 @@ public class MusicTrackerService extends Service {
 
     private BroadcastReceiver broadcastReceiver;
     private MusicTrackerThread musicTrackerThread;
+    private SynchronousQueue<MusicTrackerEvent> musicTrackerEvents = new SynchronousQueue<>();
 
     public MusicTrackerService() {
 
@@ -79,11 +82,20 @@ public class MusicTrackerService extends Service {
                 }
 
                 int id = intent.getIntExtra("id", -1);
-                long position = intent.getLongExtra("position", 0);
+                Long position = null;
+                if(intent.hasExtra("position")) {
+                    position = intent.getLongExtra("position", 0);
+                }
+                String track = intent.getStringExtra("track");
+                String artist = intent.getStringExtra("artist");
                 boolean playing = intent.getBooleanExtra("playing", false);
 
                 String filePath = queryMediaPath(id);
-                android.util.Log.d(TAG, "Song " + id + " (file=" + filePath + ", playing=" + playing + ", pos=" + position + ")");
+                try {
+                    musicTrackerEvents.put(new MusicTrackerEvent(id, filePath, playing, track, artist, position));
+                } catch(InterruptedException e) {
+                    e.printStackTrace();
+                }
             }
         };
         registerReceiver(broadcastReceiver, filter);
@@ -111,8 +123,8 @@ public class MusicTrackerService extends Service {
                     .setContentIntent(PendingIntent.getActivity(this, 0, activityIntent, 0))
                     .build();
             startForeground(NOTIFICATION_ID, notification);
-            musicTrackerThread = new MusicTrackerThread(address, port);
-            //musicTrackerThread.start();
+            musicTrackerThread = new MusicTrackerThread(musicTrackerEvents, address, port);
+            musicTrackerThread.start();
         } else {
             musicTrackerThread.setAddress(address);
             musicTrackerThread.setPort(port);
@@ -131,6 +143,7 @@ public class MusicTrackerService extends Service {
         android.util.Log.d(TAG, "onDestroy()");
         unregisterReceiver(broadcastReceiver);
         stopForeground(true);
+        musicTrackerThread.stopAndWait();
     }
 
     static public boolean isRunning(Context ctx) {
@@ -146,15 +159,45 @@ public class MusicTrackerService extends Service {
     private class MusicTrackerThread extends Thread {
         private String address;
         private String port;
+        private boolean stopped;
 
-        MusicTrackerThread(String address, String port) {
+        private Integer lastTrackData = null;
+
+        private final SynchronousQueue<MusicTrackerEvent> events;
+
+        MusicTrackerThread(SynchronousQueue<MusicTrackerEvent> events, String address, String port) {
+            this.events = events;
             this.address = address;
             this.port = port;
         }
 
         @Override
         public void run() {
-            android.util.Log.d(TAG, "run()");
+            try {
+                while (!stopped) {
+                    nextEvent(events.take());
+                }
+            } catch(InterruptedException e) {
+                musicTrackerThread = null;
+            }
+        }
+
+        private void nextEvent(MusicTrackerEvent event) {
+            android.util.Log.d(TAG, "nextEvent(" + event + ")");
+
+            sendMetaData(event);
+            if(event.playing == true && (lastTrackData == null || lastTrackData != event.songId)) {
+                sendTrackData(event);
+                lastTrackData = event.songId;
+            }
+        }
+
+        private void sendMetaData(MusicTrackerEvent event) {
+            android.util.Log.d(TAG, "sendMetaData(" + event + ")");
+        }
+
+        private void sendTrackData(MusicTrackerEvent event) {
+            android.util.Log.d(TAG, "sendTrackData(" + event + ")");
         }
 
         synchronized public void setAddress(String address) {
@@ -172,11 +215,47 @@ public class MusicTrackerService extends Service {
         synchronized public String getPort() {
             return port;
         }
+
+        synchronized public void stopAndWait() {
+            this.stopped = true;
+            musicTrackerThread.interrupt();
+            try {
+                musicTrackerThread.wait();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+            musicTrackerThread = null;
+        }
     }
 
     static private class MusicTrackerEvent {
-        public Uri uri;
-        public Object shouldStop;
+        public final int songId;
+        public final String filePath;
+        public final Boolean playing;
+        public final String track;
+        public final String artist;
+        public final Long position;
+
+        public MusicTrackerEvent(int songId, String filePath, Boolean playing, String track, String artist, Long position) {
+            this.songId = songId;
+            this.filePath = filePath;
+            this.playing = playing;
+            this.track = track;
+            this.artist = artist;
+            this.position = position;
+        }
+
+        @Override
+        public String toString() {
+            return "MusicTrackerEvent{" +
+                    "songId=" + songId +
+                    ", filePath='" + filePath + '\'' +
+                    ", playing=" + playing +
+                    ", track='" + track + '\'' +
+                    ", artist='" + artist + '\'' +
+                    ", position=" + position +
+                    '}';
+        }
     }
 
     private String queryMediaPath(int id) {
