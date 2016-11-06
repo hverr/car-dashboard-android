@@ -283,11 +283,11 @@ public class MusicTrackerService extends Service {
             return port;
         }
 
-        synchronized public void stopAndWait() {
+        public void stopAndWait() {
             this.stopped = true;
             musicTrackerThread.interrupt();
             try {
-                musicTrackerThread.wait();
+                musicTrackerThread.join();
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
