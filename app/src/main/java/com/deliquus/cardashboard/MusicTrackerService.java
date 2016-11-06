@@ -22,6 +22,7 @@ public class MusicTrackerService extends Service {
     static private final String TAG = "MusicTrackerService";
     static private final int NOTIFICATION_ID = 1;
     static public final int PERMISSIONS_REQUEST_CODE = 1;
+    static private final int URL_CONNECTION_TIMEOUT = 2000;
 
     static public final String RPI_ADDRESS_KEY = "rpi_address_key";
     static public final String RPI_PORT_KEY = "rpi_address_port";
@@ -208,6 +209,7 @@ public class MusicTrackerService extends Service {
             android.util.Log.d(TAG, "sendMetaData(): Posting to " + url);
             HttpURLConnection c = (HttpURLConnection)url.openConnection();
             try {
+                c.setConnectTimeout(URL_CONNECTION_TIMEOUT);
                 c.setDoOutput(true);
                 c.setFixedLengthStreamingMode(body.length);
                 c.addRequestProperty("Content-Type", "application/json");
@@ -237,6 +239,7 @@ public class MusicTrackerService extends Service {
                 android.util.Log.d(TAG, "sendTrackData(): Posting " + event.filePath + " to " + url);
                 HttpURLConnection c = (HttpURLConnection)url.openConnection();
                 try {
+                    c.setConnectTimeout(URL_CONNECTION_TIMEOUT);
                     c.setDoOutput(true);
                     c.setChunkedStreamingMode(0);
                     c.addRequestProperty("Content-Type", "application/octet-stream");
