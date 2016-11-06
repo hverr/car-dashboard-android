@@ -12,7 +12,11 @@ import android.provider.*;
 import android.support.v4.app.*;
 import android.support.v4.content.*;
 
+import java.io.*;
+import java.net.*;
 import java.util.concurrent.*;
+
+import org.json.*;
 
 public class MusicTrackerService extends Service {
     static private final String TAG = "MusicTrackerService";
@@ -185,19 +189,79 @@ public class MusicTrackerService extends Service {
         private void nextEvent(MusicTrackerEvent event) {
             android.util.Log.d(TAG, "nextEvent(" + event + ")");
 
-            sendMetaData(event);
-            if(event.playing == true && (lastTrackData == null || lastTrackData != event.songId)) {
-                sendTrackData(event);
-                lastTrackData = event.songId;
+            try {
+                sendMetaData(event);
+                if (event.playing == true && (lastTrackData == null || lastTrackData != event.songId)) {
+                    sendTrackData(event);
+                    lastTrackData = event.songId;
+                }
+            } catch(ServerException | IOException e) {
+                android.util.Log.e(TAG, "nextEvent(): " + e);
             }
         }
 
-        private void sendMetaData(MusicTrackerEvent event) {
+        private void sendMetaData(MusicTrackerEvent event) throws ServerException, IOException {
             android.util.Log.d(TAG, "sendMetaData(" + event + ")");
+
+            byte[] body = event.metadataJSON().toString().getBytes("utf-8");
+            URL url = new URL("http://" + getAddress() + ":" + getPort() + "/api/music/metadata");
+            android.util.Log.d(TAG, "sendMetaData(): Posting to " + url);
+            HttpURLConnection c = (HttpURLConnection)url.openConnection();
+            try {
+                c.setDoOutput(true);
+                c.setFixedLengthStreamingMode(body.length);
+                c.addRequestProperty("Content-Type", "application/json");
+
+                OutputStream out = new BufferedOutputStream(c.getOutputStream());
+                out.write(body);
+                out.flush();
+
+                c.connect();
+
+                int statusCode = c.getResponseCode();
+                if(statusCode != HttpURLConnection.HTTP_OK) {
+                    throw new ServerException("Could not send metadata: Response " + statusCode + " " + c.getResponseMessage());
+                }
+            } finally {
+                c.disconnect();
+            }
         }
 
-        private void sendTrackData(MusicTrackerEvent event) {
+        private void sendTrackData(MusicTrackerEvent event) throws ServerException, IOException {
             android.util.Log.d(TAG, "sendTrackData(" + event + ")");
+
+            File file = new File(event.filePath);
+            BufferedInputStream fis = new BufferedInputStream(new FileInputStream(file));
+            try {
+                URL url = new URL("http://" + getAddress() + ":" + getPort() + "/api/music/track_data/" + event.songId + "/" + getFileExtension(file, "data"));
+                android.util.Log.d(TAG, "sendTrackData(): Posting " + event.filePath + " to " + url);
+                HttpURLConnection c = (HttpURLConnection)url.openConnection();
+                try {
+                    c.setDoOutput(true);
+                    c.setChunkedStreamingMode(0);
+                    c.addRequestProperty("Content-Type", "application/octet-stream");
+
+                    BufferedOutputStream out = new BufferedOutputStream(c.getOutputStream());
+                    int read;
+                    byte[] buf = new byte[4096];
+                    while ((read = fis.read(buf)) > 0) {
+                        out.write(buf, 0, read);
+                        out.flush();
+                    }
+
+                    c.connect();
+
+                    int statusCode = c.getResponseCode();
+                    if(statusCode != HttpURLConnection.HTTP_OK) {
+                        throw new ServerException("Could not send metadata: Response " + statusCode + " " + c.getResponseMessage());
+                    }
+
+                } finally {
+                    c.disconnect();
+                }
+            } finally {
+                fis.close();
+            }
         }
 
         synchronized public void setAddress(String address) {
@@ -245,6 +309,23 @@ public class MusicTrackerService extends Service {
             this.position = position;
         }
 
+        public JSONObject metadataJSON() {
+            try {
+                return new JSONObject()
+                        .put("songId", songId)
+                        .put("playing", playing)
+                        .put("track", orNull(track))
+                        .put("artist", orNull(artist))
+                        .put("position", position == null ? JSONObject.NULL : position.intValue());
+            } catch (JSONException e) {
+                throw new RuntimeException(e);
+            }
+        }
+
+        private Object orNull(Object o) {
+            return o == null ? JSONObject.NULL : o;
+        }
+
         @Override
         public String toString() {
             return "MusicTrackerEvent{" +
@@ -255,6 +336,12 @@ public class MusicTrackerService extends Service {
                     ", artist='" + artist + '\'' +
                     ", position=" + position +
                     '}';
+        }
+    }
+
+    static private class ServerException extends Exception {
+        public ServerException(String msg) {
+            super(msg);
         }
     }
 
@@ -280,5 +367,14 @@ public class MusicTrackerService extends Service {
         }
         android.util.Log.e(TAG, "No song found with id " + id);
         return null;
+    }
+
+    static private String getFileExtension(File f, String def) {
+        String n = f.getName();
+        int i = n.lastIndexOf(".");
+        if(i > 0) {
+            return n.substring(i+1);
+        }
+        return def;
     }
 }
