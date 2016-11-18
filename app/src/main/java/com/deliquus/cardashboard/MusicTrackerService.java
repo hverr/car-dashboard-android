@@ -20,6 +20,7 @@ import org.json.*;
 
 public class MusicTrackerService extends Service {
     static private final String TAG = "MusicTrackerService";
+    static public final String STOP_MUSIC_STREAMING_ACTION = "com.deliquus.cardashboard.STOP_MUSIC_STREAMING";
     static private final int NOTIFICATION_ID = 1;
     static public final int PERMISSIONS_REQUEST_CODE = 1;
     static private final int URL_CONNECTION_TIMEOUT = 2000;
@@ -32,6 +33,7 @@ public class MusicTrackerService extends Service {
 
     private BroadcastReceiver broadcastReceiver;
     private MusicTrackerThread musicTrackerThread;
+    private BroadcastReceiver stopMusicStreamingReceiver;
     private SynchronousQueue<MusicTrackerEvent> musicTrackerEvents = new SynchronousQueue<>();
 
     public MusicTrackerService() {
@@ -118,14 +120,21 @@ public class MusicTrackerService extends Service {
         android.util.Log.i(TAG, "onStartCommand(): " + address + ":" + port);
 
         if(musicTrackerThread == null) {
+             stopMusicStreamingReceiver = new BroadcastReceiver() {
+                @Override
+                public void onReceive(Context context, Intent intent) {
+                    stopSelf();
+                }
+            };
+            registerReceiver(stopMusicStreamingReceiver, new IntentFilter(STOP_MUSIC_STREAMING_ACTION));
             Bitmap largeIcon = BitmapFactory.decodeResource(getResources(), R.drawable.ic_queue_music_black_24dp);
-            Intent activityIntent = new Intent(this, MainActivity.class);
+            PendingIntent stopIntent = PendingIntent.getBroadcast(this, 0, new Intent(STOP_MUSIC_STREAMING_ACTION), PendingIntent.FLAG_UPDATE_CURRENT);
             Notification notification = new Notification.Builder(this)
                     .setSmallIcon(R.drawable.ic_queue_music_black_24dp)
                     .setContentTitle("Streaming music to your RPi")
-                    .setContentText("Click to open Car Dashboard")
+                    .setContentText("Click to stop streaming")
                     .setOngoing(true)
-                    .setContentIntent(PendingIntent.getActivity(this, 0, activityIntent, 0))
+                    .setContentIntent(stopIntent)
                     .build();
             startForeground(NOTIFICATION_ID, notification);
             musicTrackerThread = new MusicTrackerThread(musicTrackerEvents, address, port);
@@ -147,6 +156,7 @@ public class MusicTrackerService extends Service {
     public void onDestroy() {
         android.util.Log.d(TAG, "onDestroy()");
         unregisterReceiver(broadcastReceiver);
+        unregisterReceiver(stopMusicStreamingReceiver);
         stopForeground(true);
         musicTrackerThread.stopAndWait();
     }
