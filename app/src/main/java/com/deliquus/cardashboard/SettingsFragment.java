@@ -7,6 +7,8 @@ import android.preference.*;
 public class SettingsFragment extends PreferenceFragment {
     private SharedPreferences.OnSharedPreferenceChangeListener preferenceListener;
 
+    private BroadcastReceiver stopMusicStreamingReceiver;
+
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -16,6 +18,16 @@ public class SettingsFragment extends PreferenceFragment {
     @Override
     public void onStart() {
         super.onStart();
+
+        stopMusicStreamingReceiver = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                SwitchPreference pref = (SwitchPreference)findPreference(PreferenceKeys.MUSIC_STREAMING_PREF);
+                pref.setChecked(false);
+            }
+        };
+        getActivity().registerReceiver(stopMusicStreamingReceiver, new IntentFilter(MusicTrackerService.STOP_MUSIC_STREAMING_ACTION));
+
         preferenceListener = new SharedPreferences.OnSharedPreferenceChangeListener() {
             @Override
             public void onSharedPreferenceChanged(SharedPreferences prefs, String s) {
@@ -45,6 +57,9 @@ public class SettingsFragment extends PreferenceFragment {
     @Override
     public void onStop() {
         super.onStop();
+
+        getActivity().unregisterReceiver(stopMusicStreamingReceiver);
+
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(getActivity());
         prefs.unregisterOnSharedPreferenceChangeListener(preferenceListener);
     }
